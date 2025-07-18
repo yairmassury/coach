@@ -4,8 +4,8 @@ AI Coach Service - Core AI integration for poker coaching.
 
 import json
 import uuid
-import asyncio
-from datetime import datetime
+
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
@@ -83,9 +83,7 @@ class AICoachService:
         
         try:
             # Get scenario and player context
-            scenario = db.query(Scenario).filter(
-                Scenario.scenario_id == request.scenario_id
-            ).first()
+            scenario = db.query(Scenario).filter(Scenario.scenario_id == request.scenario_id).first()
             
             if not scenario:
                 raise Exception("Scenario not found")
@@ -211,7 +209,7 @@ class AICoachService:
         # Determine focus area based on player weaknesses
         focus_area = request.focus_area
         if not focus_area and player_context:
-            focus_areas = player_context.focus_areas
+            focus_areas = player_context.focus_areas or []
             if focus_areas:
                 focus_area = focus_areas[0]
         
@@ -223,7 +221,7 @@ class AICoachService:
                 stack_depth=request.stack_depth,
                 difficulty=request.difficulty
             )
-        elif request.scenario_type == "postflop":
+        elif request.scenario_type and request.scenario_type == "postflop":
             return build_postflop_scenario_prompt(
                 request.tournament_stage,
                 request.stack_depth,
@@ -253,7 +251,7 @@ class AICoachService:
             
             # Add metadata
             scenario_data["scenario_id"] = str(uuid.uuid4())
-            scenario_data["created_at"] = datetime.utcnow()
+            scenario_data["created_at"] = datetime.now(timezone.utc)
             
             return scenario_data
             
@@ -273,7 +271,7 @@ class AICoachService:
             
             # Add metadata
             evaluation_data["evaluation_id"] = str(uuid.uuid4())
-            evaluation_data["created_at"] = datetime.utcnow()
+            evaluation_data["created_at"] = datetime.now(timezone.utc)
             
             return evaluation_data
             
@@ -292,7 +290,7 @@ class AICoachService:
             coaching_plan = json.loads(json_content)
             
             # Add metadata
-            coaching_plan["created_at"] = datetime.utcnow()
+            coaching_plan["created_at"] = datetime.now(timezone.utc)
             
             return coaching_plan
             
@@ -311,9 +309,7 @@ class AICoachService:
             return self.player_contexts[player_id]
         
         # Query database
-        player_context = db.query(PlayerContext).filter(
-            PlayerContext.player_id == player_id
-        ).first()
+        player_context = db.query(PlayerContext).filter(PlayerContext.player_id == player_id).first()
         
         if not player_context:
             # Create new player context
@@ -408,9 +404,7 @@ class AICoachService:
     ) -> List[Evaluation]:
         """Get recent evaluations for a player."""
         
-        return db.query(Evaluation).filter(
-            Evaluation.player_id == player_id
-        ).order_by(Evaluation.created_at.desc()).limit(limit).all()
+        return db.query(Evaluation).filter(Evaluation.player_id == player_id).order_by(Evaluation.created_at.desc()).limit(limit).all()
     
     async def _analyze_weaknesses(
         self,
@@ -425,12 +419,16 @@ class AICoachService:
         # Build weakness analysis prompt
         player_decisions = []
         for eval in evaluations:
+            optimal_action = eval.optimal_action or {}
+            ev_analysis = eval.ev_analysis or {}
+            mistake_analysis = eval.mistake_analysis or {}
+            
             player_decisions.append({
                 "scenario_summary": f"MTT {eval.scenario.tournament_stage} stage",
                 "player_action": eval.player_action,
-                "optimal_action": eval.optimal_action.get("action", "unknown"),
-                "ev_difference": eval.ev_analysis.get("ev_difference", 0),
-                "leak_type": eval.mistake_analysis.get("leak_type", "none") if eval.mistake_analysis else "none"
+                "optimal_action": optimal_action.get("action", "unknown"),
+                "ev_difference": ev_analysis.get("ev_difference", 0),
+                "leak_type": mistake_analysis.get("leak_type", "none")
             })
         
         prompt = build_weakness_analysis_prompt(
@@ -481,7 +479,8 @@ class AICoachService:
         
         # Get top weaknesses
         weakness_scores = []
-        for category, weaknesses in player_context.weaknesses.items():
+        weaknesses_dict = player_context.weaknesses or {}
+        for category, weaknesses in weaknesses_dict.items():
             for weakness, score in weaknesses.items():
                 if score > 0:
                     weakness_scores.append({
@@ -498,8 +497,8 @@ class AICoachService:
             "overall_accuracy": overall_accuracy,
             "improvement_rate": improvement_rate,
             "biggest_leaks": biggest_leaks,
-            "strength_areas": player_context.strength_areas,
-            "recommended_focus": player_context.focus_areas
+            "strength_areas": player_context.strength_areas or {},
+            "recommended_focus": player_context.focus_areas or []
         }
     
     def _scenario_to_dict(self, scenario: Scenario) -> Dict[str, Any]:

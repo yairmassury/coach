@@ -4,11 +4,12 @@ Local data management service for SQLite database and file operations.
 
 import json
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import sqlite3
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 
 from ..config.database import get_local_data_dir, get_db, engine
 from ..models.player_context import PlayerContext
@@ -45,10 +46,11 @@ class LocalDataService:
         """Initialize the database with tables."""
         try:
             # Import all models to ensure they're registered
-            from ..models import scenario, evaluation, player_context, user
+            from ..models import scenario, evaluation, player_context
             
             # Create all tables
-            engine.metadata.create_all(bind=engine)
+            from ..config.database import Base
+            Base.metadata.create_all(bind=engine)
             
             print(f"✅ Database initialized at: {self.db_path}")
             
@@ -59,7 +61,7 @@ class LocalDataService:
     def backup_database(self, backup_name: Optional[str] = None) -> Path:
         """Create a backup of the database."""
         if not backup_name:
-            backup_name = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+            backup_name = f"backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.db"
         
         backup_path = self.data_dir / "backups" / backup_name
         
@@ -78,7 +80,7 @@ class LocalDataService:
                 raise FileNotFoundError(f"Backup file not found: {backup_path}")
             
             # Create a backup of current database before restore
-            self.backup_database(f"pre_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db")
+            self.backup_database(f"pre_restore_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.db")
             
             # Restore from backup
             shutil.copy2(backup_path, self.db_path)
@@ -92,26 +94,20 @@ class LocalDataService:
         """Export all player data to a dictionary."""
         try:
             # Get player context
-            player_context = db.query(PlayerContext).filter(
-                PlayerContext.player_id == player_id
-            ).first()
+            player_context = db.query(PlayerContext).filter(PlayerContext.player_id == player_id).first()
             
             # Get all evaluations
-            evaluations = db.query(Evaluation).filter(
-                Evaluation.player_id == player_id
-            ).all()
+            evaluations = db.query(Evaluation).filter(Evaluation.player_id == player_id).all()
             
             # Get all scenarios the player has encountered
             scenario_ids = [eval.scenario_id for eval in evaluations]
-            scenarios = db.query(Scenario).filter(
-                Scenario.scenario_id.in_(scenario_ids)
-            ).all()
+            scenarios = db.query(Scenario).filter(Scenario.scenario_id.in_(scenario_ids)).all()
             
             # Export data
             export_data = {
                 "export_info": {
                     "player_id": player_id,
-                    "export_date": datetime.utcnow().isoformat(),
+                    "export_date": datetime.now(timezone.utc).isoformat(),
                     "version": "1.0.0"
                 },
                 "player_context": {
@@ -171,7 +167,7 @@ class LocalDataService:
     def export_player_data_to_file(self, player_id: str, db: Session, filename: Optional[str] = None) -> Path:
         """Export player data to JSON file."""
         if not filename:
-            filename = f"player_{player_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            filename = f"player_{player_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
         
         export_path = self.data_dir / "exports" / filename
         
@@ -201,16 +197,14 @@ class LocalDataService:
                 context_data = data["player_context"]
                 
                 # Check if player already exists
-                existing_player = db.query(PlayerContext).filter(
-                    PlayerContext.player_id == player_id
-                ).first()
+                existing_player = db.query(PlayerContext).filter(PlayerContext.player_id == player_id).first()
                 
                 if existing_player:
                     # Update existing player
                     for key, value in context_data.items():
                         if key not in ["created_at", "updated_at"]:
                             setattr(existing_player, key, value)
-                    existing_player.updated_at = datetime.utcnow()
+                    existing_player.updated_at = datetime.now(timezone.utc)
                 else:
                     # Create new player
                     new_player = PlayerContext(
@@ -248,8 +242,8 @@ class LocalDataService:
                 stats = {
                     "database_size": self.get_database_size(),
                     "database_path": str(self.db_path),
-                    "created": datetime.fromtimestamp(self.db_path.stat().st_ctime).isoformat(),
-                    "modified": datetime.fromtimestamp(self.db_path.stat().st_mtime).isoformat(),
+                    "created": datetime.fromtimestamp(self.db_path.stat().st_ctime, timezone.utc).isoformat(),
+                    "modified": datetime.fromtimestamp(self.db_path.stat().st_mtime, timezone.utc).isoformat(),
                     "tables": {}
                 }
                 
@@ -272,7 +266,7 @@ class LocalDataService:
     def cleanup_old_backups(self, keep_days: int = 30) -> List[Path]:
         """Remove backup files older than specified days."""
         backup_dir = self.data_dir / "backups"
-        cutoff_date = datetime.now().timestamp() - (keep_days * 24 * 60 * 60)
+        cutoff_date = datetime.now(timezone.utc).timestamp() - (keep_days * 24 * 60 * 60)
         
         removed_files = []
         
@@ -303,8 +297,8 @@ class LocalDataService:
                     "filename": backup_file.name,
                     "path": str(backup_file),
                     "size": stat.st_size,
-                    "created": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                    "modified": datetime.fromtimestamp(stat.st_mtime).isoformat()
+                    "created": datetime.fromtimestamp(stat.st_ctime, timezone.utc).isoformat(),
+                    "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat()
                 })
             
             # Sort by creation date, newest first

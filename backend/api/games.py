@@ -5,9 +5,9 @@ Game API endpoints - MTT scenario and evaluation endpoints.
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
-from ..models.scenario import ScenarioRequest, ScenarioResponse
+from ..models.scenario import ScenarioRequest, ScenarioResponse, TournamentStage
 from ..models.evaluation import EvaluationRequest, EvaluationResponse
 from ..services.coaching_service import coaching_service
 from ..config.database import get_db
@@ -30,7 +30,7 @@ async def generate_scenario(
                 "difficulty": request.difficulty,
                 "focus_area": request.focus_area,
                 "game_format": request.game_format,
-                "scenario_type": getattr(request, 'scenario_type', 'general')
+                "scenario_type": request.scenario_type or 'general'
             },
             db=db
         )
@@ -67,18 +67,16 @@ async def get_scenario(
     scenario_id: str,
     db: Session = Depends(get_db)
 ):
-    """Get scenario details by ID."""
+    """Get a single scenario by ID."""
     
     try:
         from ..models.scenario import Scenario
         
-        scenario = db.query(Scenario).filter(
-            Scenario.scenario_id == scenario_id
-        ).first()
+        scenario = db.query(Scenario).filter(Scenario.scenario_id == scenario_id).first()
         
         if not scenario:
             raise HTTPException(status_code=404, detail="Scenario not found")
-        
+            
         return scenario
         
     except Exception as e:
@@ -89,18 +87,16 @@ async def get_evaluation(
     evaluation_id: str,
     db: Session = Depends(get_db)
 ):
-    """Get evaluation details by ID."""
+    """Get a single evaluation by ID."""
     
     try:
         from ..models.evaluation import Evaluation
         
-        evaluation = db.query(Evaluation).filter(
-            Evaluation.evaluation_id == evaluation_id
-        ).first()
+        evaluation = db.query(Evaluation).filter(Evaluation.evaluation_id == evaluation_id).first()
         
         if not evaluation:
             raise HTTPException(status_code=404, detail="Evaluation not found")
-        
+            
         return evaluation
         
     except Exception as e:
@@ -113,18 +109,18 @@ async def get_player_scenarios(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db)
 ):
-    """Get scenarios for a specific player."""
+    """Get scenarios encountered by a player."""
     
     try:
         from ..models.scenario import Scenario
         from ..models.evaluation import Evaluation
         
-        # Get scenarios that have been evaluated by this player
-        scenarios = db.query(Scenario).join(
-            Evaluation, Scenario.scenario_id == Evaluation.scenario_id
-        ).filter(
-            Evaluation.player_id == player_id
-        ).offset(offset).limit(limit).all()
+        # Get all evaluation for player
+        evaluations = db.query(Evaluation).filter(Evaluation.player_id == player_id).all()
+        scenario_ids = [eval.scenario_id for eval in evaluations]
+        
+        # Get scenarios
+        scenarios = db.query(Scenario).filter(Scenario.scenario_id.in_(scenario_ids)).limit(limit).offset(offset).all()
         
         return scenarios
         
@@ -138,14 +134,12 @@ async def get_player_evaluations(
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db)
 ):
-    """Get evaluations for a specific player."""
+    """Get evaluations for a player."""
     
     try:
         from ..models.evaluation import Evaluation
         
-        evaluations = db.query(Evaluation).filter(
-            Evaluation.player_id == player_id
-        ).order_by(Evaluation.created_at.desc()).offset(offset).limit(limit).all()
+        evaluations = db.query(Evaluation).filter(Evaluation.player_id == player_id).limit(limit).offset(offset).all()
         
         return evaluations
         
@@ -162,33 +156,14 @@ async def get_player_stats(
     try:
         from ..models.evaluation import Evaluation
         
-        # Get all evaluations for this player
-        evaluations = db.query(Evaluation).filter(
-            Evaluation.player_id == player_id
-        ).all()
-        
-        if not evaluations:
-            return {
-                "total_scenarios": 0,
-                "correct_decisions": 0,
-                "accuracy_rate": 0.0,
-                "avg_decision_time": 0.0
-            }
-        
-        # Calculate stats
+        evaluations = db.query(Evaluation).filter(Evaluation.player_id == player_id).all()
         total_scenarios = len(evaluations)
         correct_decisions = sum(1 for eval in evaluations if eval.correct)
-        accuracy_rate = correct_decisions / total_scenarios
-        
-        # Calculate average decision time (exclude None values)
-        decision_times = [eval.time_taken for eval in evaluations if eval.time_taken is not None]
-        avg_decision_time = sum(decision_times) / len(decision_times) if decision_times else 0.0
         
         return {
             "total_scenarios": total_scenarios,
             "correct_decisions": correct_decisions,
-            "accuracy_rate": accuracy_rate,
-            "avg_decision_time": avg_decision_time
+            "accuracy": correct_decisions / total_scenarios if total_scenarios > 0 else 0
         }
         
     except Exception as e:
@@ -197,11 +172,13 @@ async def get_player_stats(
 @router.post("/session/start")
 async def start_session(
     player_id: str,
-    session_goals: List[str] = [],
+    session_goals: Optional[List[str]] = None,
     db: Session = Depends(get_db)
 ):
     """Start a new coaching session."""
-    
+
+    if session_goals is None:
+        session_goals = []
     try:
         session = await coaching_service.start_coaching_session(
             player_id=player_id,
@@ -264,12 +241,16 @@ async def generate_scenario_legacy(
 ):
     """Legacy endpoint for scenario generation."""
     
+    # Convert string to enum
+    stage_enum = TournamentStage(tournament_stage) if tournament_stage in [e.value for e in TournamentStage] else TournamentStage.MIDDLE
+    
     request = ScenarioRequest(
-        tournament_stage=tournament_stage,
+        tournament_stage=stage_enum,
         stack_depth=stack_depth,
         difficulty=difficulty,
         player_id=player_id,
-        focus_area=focus_area
+        focus_area=focus_area,
+        scenario_type="general"
     )
     
     return await generate_scenario(request, db)
@@ -285,12 +266,27 @@ async def evaluate_decision_legacy(
 ):
     """Legacy endpoint for decision evaluation."""
     
+    player_context = await coaching_service._get_player_context(player_id, db)
     request = EvaluationRequest(
         scenario_id=scenario_id,
         player_id=player_id,
         player_action=player_action,
         player_amount=player_amount,
-        time_taken=time_taken
+        time_taken=time_taken,
+        player_context=player_context.to_dict() if player_context else None
     )
     
-    return await evaluate_decision(request, db)
+    try:
+        evaluation = await coaching_service.submit_decision(
+            scenario_id=request.scenario_id,
+            player_id=request.player_id,
+            player_action=request.player_action,
+            player_amount=request.player_amount,
+            time_taken=request.time_taken,
+            db=db
+        )
+        
+        return evaluation
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

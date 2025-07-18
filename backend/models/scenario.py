@@ -2,15 +2,15 @@
 MTT Scenario models for AI poker coach.
 """
 
-from datetime import datetime
-from typing import List, Dict, Optional, Any
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, JSON, Text, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
-from pydantic import BaseModel, Field
+from datetime import datetime, timezone
 from enum import Enum
+from typing import List, Dict, Optional, Any
 
-Base = declarative_base()
+from pydantic import BaseModel, Field
+from sqlalchemy import Column, Integer, String, DateTime, JSON, Text
+from sqlalchemy.orm import relationship
+
+from ..config.database import Base
 
 class TournamentStage(str, Enum):
     EARLY = "early"
@@ -76,7 +76,7 @@ class Scenario(Base):
     difficulty_factors = Column(JSON, nullable=False)
     learning_objectives = Column(JSON, nullable=False)
     difficulty_level = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String, nullable=True)
     
     # Relationships
@@ -88,10 +88,10 @@ class ScenarioRequest(BaseModel):
     tournament_stage: TournamentStage = Field(..., description="Stage of the tournament")
     stack_depth: int = Field(..., ge=1, le=200, description="Stack depth in big blinds")
     game_format: str = Field(default="MTT", description="Game format")
-    difficulty: str = Field(default="intermediate", description="Difficulty level")
+    difficulty: str = Field(default="intermediate", description="Difficulty level", pattern="^(beginner|intermediate|advanced|expert)$")
     player_id: str = Field(..., description="Player identifier")
     focus_area: Optional[str] = Field(None, description="Specific weakness to target")
-    scenario_type: Optional[str] = Field(None, description="Type of scenario")
+    scenario_type: Optional[str] = Field(default="general", description="Type of scenario", pattern="^(general|postflop|bubble|final_table)$")
 
 class ScenarioResponse(BaseModel):
     """Pydantic model for scenario responses."""

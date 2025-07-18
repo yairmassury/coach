@@ -2,7 +2,7 @@
 Analysis schemas for AI poker coaching.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
@@ -86,7 +86,7 @@ class SkillAssessmentSchema(BaseModel):
     skill_breakdown: Dict[str, float]
     skill_level: str
     confidence_intervals: Dict[str, List[float]]
-    assessment_date: datetime = Field(default_factory=datetime.utcnow)
+    assessment_date: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class CompetencyMatrixSchema(BaseModel):
     """Schema for competency matrix."""

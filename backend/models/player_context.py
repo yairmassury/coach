@@ -2,15 +2,14 @@
 Player context models for tracking weaknesses and progress.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, JSON, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON
+# relationship import removed - not used in this file
 from pydantic import BaseModel, Field
 from enum import Enum
 
-Base = declarative_base()
+from ..config.database import Base
 
 class SkillLevel(str, Enum):
     BEGINNER = "beginner"
@@ -47,8 +46,8 @@ class PlayerContext(Base):
     session_length_preference = Column(Integer, default=30)
     
     # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     last_session = Column(DateTime, nullable=True)
 
 class PlayerContextResponse(BaseModel):
@@ -382,14 +381,22 @@ class PlayerContextManager:
         if not evaluation_data.get('correct', True):
             mistake_analysis = evaluation_data.get('mistake_analysis', {})
             if mistake_analysis:
+                # Get current weaknesses as dict, ensuring it's not None
+                current_weaknesses = context.weaknesses or DEFAULT_WEAKNESS_CATEGORIES.copy()
+                # Update weaknesses and set back to the model
                 context.weaknesses = update_weakness_score(
-                    context.weaknesses,
+                    current_weaknesses,
                     mistake_analysis.get('leak_type', ''),
                     mistake_analysis.get('severity', 0)
                 )
         
         # Update accuracy trend
         new_accuracy = 1.0 if evaluation_data.get('correct', False) else 0.0
+        
+        # Ensure accuracy_trend is a list
+        if context.accuracy_trend is None:
+            context.accuracy_trend = []
+        
         context.accuracy_trend.append(new_accuracy)
         
         # Limit trend history
@@ -398,9 +405,9 @@ class PlayerContextManager:
         
         # Update focus areas
         context.focus_areas = recommend_focus_areas(
-            context.weaknesses,
-            context.skill_level,
-            context.total_sessions
+            context.weaknesses or {},
+            context.skill_level or "intermediate",
+            context.total_sessions or 0
         )
         
         return context
@@ -411,7 +418,7 @@ class PlayerContextManager:
     ) -> Dict[str, Any]:
         """Get recommendations for next scenario."""
         
-        top_weaknesses = identify_top_weaknesses(context.weaknesses, 3)
+        top_weaknesses = identify_top_weaknesses(context.weaknesses or {}, 3)
         
         return {
             "focus_weakness": top_weaknesses[0] if top_weaknesses else None,

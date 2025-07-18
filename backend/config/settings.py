@@ -11,72 +11,63 @@ class Settings(BaseSettings):
     """Application settings."""
     
     # Environment
-    ENVIRONMENT: str = Field(default="development", env="ENVIRONMENT")
-    DEBUG: bool = Field(default=True, env="DEBUG")
+    ENVIRONMENT: str = Field(default="development")
+    DEBUG: bool = Field(default=True)
     
     # Database - SQLite Local Storage
-    DATABASE_URL: str = Field(
-        default="sqlite:///~/.coach/player_data.db",
-        env="DATABASE_URL"
-    )
+    DATABASE_URL: str = Field(default="sqlite:///~/.coach/player_data.db")
     
     # Redis
-    REDIS_URL: str = Field(
-        default="redis://localhost:6379/0",
-        env="REDIS_URL"
-    )
+    REDIS_URL: str = Field(default="redis://localhost:6379/0")
     
     # OpenAI
-    OPENAI_API_KEY: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
-    OPENAI_MODEL: str = Field(default="gpt-4", env="OPENAI_MODEL")
-    OPENAI_TEMPERATURE: float = Field(default=0.7, env="OPENAI_TEMPERATURE")
-    OPENAI_MAX_TOKENS: int = Field(default=2000, env="OPENAI_MAX_TOKENS")
+    OPENAI_API_KEY: Optional[str] = Field(default=None)
+    OPENAI_MODEL: str = Field(default="gpt-4")
+    OPENAI_TEMPERATURE: float = Field(default=0.7)
+    OPENAI_MAX_TOKENS: int = Field(default=2000)
     
     # Alternative AI providers
-    CLAUDE_API_KEY: Optional[str] = Field(default=None, env="CLAUDE_API_KEY")
-    PERPLEXITY_API_KEY: Optional[str] = Field(default=None, env="PERPLEXITY_API_KEY")
+    CLAUDE_API_KEY: Optional[str] = Field(default=None)
+    PERPLEXITY_API_KEY: Optional[str] = Field(default=None)
     
     # Security
-    SECRET_KEY: str = Field(
-        default="your-secret-key-change-this-in-production",
-        env="SECRET_KEY"
-    )
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+    SECRET_KEY: str = Field(default="your-secret-key-change-this-in-production")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
     
     # CORS
-    CORS_ORIGINS: str = Field(default="http://localhost:3000", env="CORS_ORIGINS")
+    CORS_ORIGINS: str = Field(default="http://localhost:3000")
     
     # Logging
-    LOG_LEVEL: str = Field(default="INFO", env="LOG_LEVEL")
+    LOG_LEVEL: str = Field(default="INFO")
     
     # Application
-    APP_NAME: str = Field(default="AI Poker Coach", env="APP_NAME")
-    APP_VERSION: str = Field(default="1.0.0", env="APP_VERSION")
+    APP_NAME: str = Field(default="AI Poker Coach")
+    APP_VERSION: str = Field(default="1.0.0")
     
     # Server
-    HOST: str = Field(default="0.0.0.0", env="HOST")
-    PORT: int = Field(default=8000, env="PORT")
+    HOST: str = Field(default="0.0.0.0")
+    PORT: int = Field(default=8000)
     
     # File uploads
-    UPLOAD_DIR: str = Field(default="uploads", env="UPLOAD_DIR")
-    MAX_UPLOAD_SIZE: int = Field(default=10 * 1024 * 1024, env="MAX_UPLOAD_SIZE")  # 10MB
+    UPLOAD_DIR: str = Field(default="uploads")
+    MAX_UPLOAD_SIZE: int = Field(default=10 * 1024 * 1024)  # 10MB
     
     # Session settings
-    SESSION_TIMEOUT: int = Field(default=3600, env="SESSION_TIMEOUT")  # 1 hour
-    MAX_SCENARIOS_PER_SESSION: int = Field(default=50, env="MAX_SCENARIOS_PER_SESSION")
+    SESSION_TIMEOUT: int = Field(default=3600)  # 1 hour
+    MAX_SCENARIOS_PER_SESSION: int = Field(default=50)
     
     # AI Coach settings
-    DEFAULT_DIFFICULTY: str = Field(default="intermediate", env="DEFAULT_DIFFICULTY")
-    SCENARIO_CACHE_TTL: int = Field(default=300, env="SCENARIO_CACHE_TTL")  # 5 minutes
-    MAX_PLAYER_CONTEXTS: int = Field(default=1000, env="MAX_PLAYER_CONTEXTS")
+    DEFAULT_DIFFICULTY: str = Field(default="intermediate")
+    SCENARIO_CACHE_TTL: int = Field(default=300)  # 5 minutes
+    MAX_PLAYER_CONTEXTS: int = Field(default=1000)
     
     # Rate limiting
-    RATE_LIMIT_SCENARIOS: int = Field(default=100, env="RATE_LIMIT_SCENARIOS")  # per hour
-    RATE_LIMIT_EVALUATIONS: int = Field(default=200, env="RATE_LIMIT_EVALUATIONS")  # per hour
+    RATE_LIMIT_SCENARIOS: int = Field(default=100)  # per hour
+    RATE_LIMIT_EVALUATIONS: int = Field(default=200)  # per hour
     
     # Monitoring
-    ENABLE_METRICS: bool = Field(default=True, env="ENABLE_METRICS")
-    SENTRY_DSN: Optional[str] = Field(default=None, env="SENTRY_DSN")
+    ENABLE_METRICS: bool = Field(default=True)
+    SENTRY_DSN: Optional[str] = Field(default=None)
     
     class Config:
         """Pydantic config."""

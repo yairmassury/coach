@@ -31,8 +31,8 @@ def initialize_database():
         backend_dir = Path(__file__).parent / "backend"
         sys.path.insert(0, str(backend_dir))
         
-        from services.local_data_service import local_data_service
-        local_data_service.initialize_database()
+        from config.database import init_database
+        init_database()
         print("✅ Database initialized successfully")
         
     except Exception as e:

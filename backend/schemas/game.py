@@ -2,7 +2,7 @@
 Game schemas for MTT poker coaching.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
 
@@ -227,14 +227,14 @@ class ErrorResponse(BaseModel):
     
     error: str
     detail: Optional[str] = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ValidationErrorResponse(BaseModel):
     """Schema for validation errors."""
     
     error: str = "Validation Error"
     details: List[Dict[str, Any]]
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 # API Response wrappers
 class APIResponse(BaseModel):
@@ -243,7 +243,7 @@ class APIResponse(BaseModel):
     success: bool = True
     data: Any
     message: Optional[str] = None
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class PaginatedResponse(BaseModel):
     """Schema for paginated responses."""

@@ -2,15 +2,14 @@
 Evaluation models for AI poker coach decisions.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Optional, Any
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, JSON, Text, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, JSON, ForeignKey
 from sqlalchemy.orm import relationship
 from pydantic import BaseModel, Field
 from enum import Enum
 
-Base = declarative_base()
+from ..config.database import Base
 
 class LeakCategory(str, Enum):
     PREFLOP = "preflop"
@@ -46,7 +45,7 @@ class Evaluation(Base):
     key_concepts = Column(JSON, nullable=False)
     difficulty_assessment = Column(JSON, nullable=False)
     follow_up_scenarios = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     scenario = relationship("Scenario", back_populates="evaluations")

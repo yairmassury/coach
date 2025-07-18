@@ -2,16 +2,17 @@
 AI Coach API endpoints - Dedicated AI coaching routes.
 """
 
+from datetime import datetime, timezone
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
-from datetime import datetime
 
+from ..config.database import get_db
+from ..models.evaluation import EvaluationRequest
+from ..models.scenario import ScenarioRequest, TournamentStage
 from ..services.ai_coach_service import ai_coach_service
 from ..services.coaching_service import coaching_service
-from ..models.scenario import ScenarioRequest, TournamentStage
-from ..models.evaluation import EvaluationRequest
-from ..config.database import get_db
 
 router = APIRouter(prefix="/ai", tags=["ai-coach"])
 
@@ -72,26 +73,28 @@ async def ai_evaluate_decision(
     """Evaluate player decision using AI coach."""
     
     try:
+        player_context = await ai_coach_service._get_player_context(player_id, db)
         request = EvaluationRequest(
             scenario_id=scenario_id,
             player_id=player_id,
             player_action=action,
             player_amount=amount,
-            time_taken=time_taken
+            time_taken=time_taken,
+            player_context=player_context.to_dict() if player_context else None
         )
         
         evaluation = await ai_coach_service.evaluate_decision(request, db)
         
         return {
             "correct": evaluation.correct,
-            "optimal_action": evaluation.optimal_action.get("action", "unknown"),
-            "optimal_amount": evaluation.optimal_action.get("amount", 0),
-            "ev_difference": evaluation.ev_analysis.get("ev_difference", 0),
-            "leak_identified": evaluation.mistake_analysis.get("leak_type", "none") if evaluation.mistake_analysis else "none",
-            "explanation": evaluation.coaching_feedback.get("immediate_feedback", ""),
-            "coaching_tip": evaluation.coaching_feedback.get("improvement_tip", ""),
-            "improvement_areas": evaluation.key_concepts,
-            "severity": evaluation.mistake_analysis.get("severity", 0) if evaluation.mistake_analysis else 0
+            "optimal_action": (evaluation.optimal_action or {}).get("action", "unknown"),
+            "optimal_amount": (evaluation.optimal_action or {}).get("amount", 0),
+            "ev_difference": (evaluation.ev_analysis or {}).get("ev_difference", 0),
+            "leak_identified": (evaluation.mistake_analysis or {}).get("leak_type", "none"),
+            "explanation": (evaluation.coaching_feedback or {}).get("immediate_feedback", ""),
+            "coaching_tip": (evaluation.coaching_feedback or {}).get("improvement_tip", ""),
+            "improvement_areas": evaluation.key_concepts or [],
+            "severity": (evaluation.mistake_analysis or {}).get("severity", 0)
         }
         
     except Exception as e:
@@ -125,10 +128,13 @@ async def get_ai_progress(
 @router.get("/coaching-plan/{player_id}")
 async def get_coaching_plan(
     player_id: str,
-    session_goals: List[str] = Query(default=[]),
+    session_goals: List[str] = Query(default=None),
     db: Session = Depends(get_db)
 ):
     """Get AI-generated coaching plan."""
+    
+    if session_goals is None:
+        session_goals = []
     
     try:
         coaching_plan = await ai_coach_service.generate_coaching_plan(
@@ -150,10 +156,13 @@ async def get_coaching_plan(
 @router.post("/coaching-session/start")
 async def start_ai_coaching_session(
     player_id: str,
-    session_goals: List[str] = [],
+    session_goals: Optional[List[str]] = None,
     db: Session = Depends(get_db)
 ):
     """Start an AI coaching session."""
+    
+    if session_goals is None:
+        session_goals = []
     
     try:
         session = await coaching_service.start_coaching_session(
@@ -173,15 +182,17 @@ async def get_weakness_analysis(
     limit: int = Query(20, ge=5, le=100),
     db: Session = Depends(get_db)
 ):
-    """Get AI weakness analysis for player."""
+    """Get AI-powered weakness analysis."""
     
     try:
-        # Get recent evaluations
-        evaluations = await ai_coach_service._get_recent_evaluations(player_id, db, limit)
+        from ..models.evaluation import Evaluation
         
-        # Analyze weaknesses
-        analysis = await ai_coach_service._analyze_weaknesses(player_id, evaluations)
+        recent_evaluations = db.query(Evaluation).filter(Evaluation.player_id == player_id).order_by(Evaluation.created_at.desc()).limit(limit).all()
         
+        analysis = await ai_coach_service._analyze_weaknesses(
+            player_id=player_id,
+            recent_evaluations=recent_evaluations
+        )
         return analysis
         
     except Exception as e:
@@ -278,23 +289,21 @@ async def get_detailed_feedback(
     try:
         from ..models.evaluation import Evaluation
         
-        evaluation = db.query(Evaluation).filter(
-            Evaluation.evaluation_id == evaluation_id
-        ).first()
+        evaluation = db.query(Evaluation).filter(Evaluation.evaluation_id == evaluation_id).first()
         
         if not evaluation:
             raise HTTPException(status_code=404, detail="Evaluation not found")
         
         return {
             "evaluation_id": evaluation.evaluation_id,
-            "immediate_feedback": evaluation.coaching_feedback.get("immediate_feedback", ""),
-            "concept_explanation": evaluation.coaching_feedback.get("concept_explanation", ""),
-            "improvement_tip": evaluation.coaching_feedback.get("improvement_tip", ""),
-            "practice_suggestion": evaluation.coaching_feedback.get("practice_suggestion", ""),
-            "performance_impact": evaluation.performance_impact,
-            "key_concepts": evaluation.key_concepts,
-            "difficulty_assessment": evaluation.difficulty_assessment,
-            "follow_up_scenarios": evaluation.follow_up_scenarios
+            "immediate_feedback": (evaluation.coaching_feedback or {}).get("immediate_feedback", ""),
+            "concept_explanation": (evaluation.coaching_feedback or {}).get("concept_explanation", ""),
+            "improvement_tip": (evaluation.coaching_feedback or {}).get("improvement_tip", ""),
+            "practice_suggestion": (evaluation.coaching_feedback or {}).get("practice_suggestion", ""),
+            "performance_impact": evaluation.performance_impact or {},
+            "key_concepts": evaluation.key_concepts or [],
+            "difficulty_assessment": evaluation.difficulty_assessment or {},
+            "follow_up_scenarios": evaluation.follow_up_scenarios or []
         }
         
     except Exception as e:
@@ -304,27 +313,18 @@ async def get_detailed_feedback(
 async def get_global_stats(
     db: Session = Depends(get_db)
 ):
-    """Get global coaching statistics."""
+    """Get global statistics for the application."""
     
     try:
         from ..models.evaluation import Evaluation
-        from ..models.player_context import PlayerContext
+        from ..models.scenario import Scenario
         
-        # Get total counts
         total_evaluations = db.query(Evaluation).count()
-        total_players = db.query(PlayerContext).count()
-        
-        # Get recent activity
-        recent_evaluations = db.query(Evaluation).filter(
-            Evaluation.created_at >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        ).count()
+        total_scenarios = db.query(Scenario).count()
         
         return {
             "total_evaluations": total_evaluations,
-            "total_players": total_players,
-            "recent_evaluations": recent_evaluations,
-            "avg_accuracy": 0.65,  # This would be calculated from actual data
-            "popular_concepts": ["position", "pot_odds", "ICM", "bet_sizing"]
+            "total_scenarios": total_scenarios
         }
         
     except Exception as e:
@@ -338,6 +338,6 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "ai-coach",
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
         "version": "1.0.0"
     }

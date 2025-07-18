@@ -4,10 +4,10 @@ Coaching service - High-level coaching operations.
 
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 
 from .ai_coach_service import ai_coach_service
-from ..models.scenario import ScenarioRequest, ScenarioResponse
+from ..models.scenario import ScenarioRequest, ScenarioResponse, TournamentStage
 from ..models.evaluation import EvaluationRequest, EvaluationResponse
 from ..models.player_context import PlayerContext, PlayerContextManager
 
@@ -40,12 +40,12 @@ class CoachingService:
             recommendations = PlayerContextManager.get_next_scenario_recommendations(player_context)
             
             return {
-                "session_id": f"session_{datetime.utcnow().timestamp()}",
+                "session_id": f"session_{datetime.now(timezone.utc).timestamp()}",
                 "player_id": player_id,
                 "coaching_plan": coaching_plan,
                 "recommendations": recommendations,
                 "session_goals": session_goals,
-                "started_at": datetime.utcnow()
+                "started_at": datetime.now(timezone.utc)
             }
             
         except Exception as e:
@@ -64,12 +64,16 @@ class CoachingService:
             player_context = await self.ai_coach._get_player_context(player_id, db)
             
             # Build scenario request
+            # Convert string to enum if needed
+            tournament_stage_str = preferences.get("tournament_stage", "middle")
+            tournament_stage = TournamentStage(tournament_stage_str) if isinstance(tournament_stage_str, str) else tournament_stage_str
+            
             scenario_request = ScenarioRequest(
-                tournament_stage=preferences.get("tournament_stage", "middle"),
+                tournament_stage=tournament_stage,
                 stack_depth=preferences.get("stack_depth", 30),
-                difficulty=preferences.get("difficulty", player_context.preferred_difficulty),
+                difficulty=preferences.get("difficulty", player_context.preferred_difficulty if player_context else "intermediate"),
                 player_id=player_id,
-                focus_area=preferences.get("focus_area", player_context.focus_areas[0] if player_context.focus_areas else None),
+                focus_area=preferences.get("focus_area", (player_context.focus_areas or [None])[0]),
                 game_format=preferences.get("game_format", "MTT"),
                 scenario_type=preferences.get("scenario_type", "general")
             )
@@ -95,12 +99,14 @@ class CoachingService:
         
         try:
             # Build evaluation request
+            player_context = await self.ai_coach._get_player_context(player_id, db)
             evaluation_request = EvaluationRequest(
                 scenario_id=scenario_id,
                 player_id=player_id,
                 player_action=player_action,
                 player_amount=player_amount,
-                time_taken=time_taken
+                time_taken=time_taken,
+                player_context=player_context.to_dict() if player_context else None
             )
             
             # Evaluate decision
@@ -168,11 +174,12 @@ class CoachingService:
             leaks_identified = set()
             
             for eval in session_evaluations:
-                concepts_practiced.update(eval.key_concepts)
+                concepts_practiced.update(eval.key_concepts or [])
                 if eval.mistake_analysis:
-                    leaks_identified.add(eval.mistake_analysis.get("leak_type", "unknown"))
+                    mistake_analysis = eval.mistake_analysis or {}
+                    leaks_identified.add(mistake_analysis.get("leak_type", "unknown"))
             
-            session_duration = (datetime.utcnow() - session_start).total_seconds() / 60  # minutes
+            session_duration = (datetime.now(timezone.utc) - session_start).total_seconds() / 60  # minutes
             
             return {
                 "session_duration": session_duration,
@@ -182,7 +189,7 @@ class CoachingService:
                 "concepts_practiced": list(concepts_practiced),
                 "leaks_identified": list(leaks_identified),
                 "session_start": session_start,
-                "session_end": datetime.utcnow()
+                "session_end": datetime.now(timezone.utc)
             }
             
         except Exception as e:
@@ -242,7 +249,7 @@ class CoachingService:
             # Calculate session frequency
             sessions_per_week = 0
             if player_context.last_session:
-                days_since_last = (datetime.utcnow() - player_context.last_session).days
+                days_since_last = (datetime.now(timezone.utc) - player_context.last_session).days
                 if days_since_last > 0:
                     sessions_per_week = player_context.total_sessions / (days_since_last / 7)
             
@@ -255,13 +262,13 @@ class CoachingService:
             if player_context.improvement_rate < 0.01:
                 insights.append("Improvement rate is slow - consider focusing on specific weakness areas")
             
-            if len(player_context.focus_areas) > 3:
+            if len(player_context.focus_areas or []) > 3:
                 insights.append("Too many focus areas - consider narrowing down to 2-3 key areas")
             
             return {
                 "insights": insights,
                 "sessions_per_week": sessions_per_week,
-                "days_since_last_session": (datetime.utcnow() - player_context.last_session).days if player_context.last_session else None
+                "days_since_last_session": (datetime.now(timezone.utc) - player_context.last_session).days if player_context.last_session else None
             }
             
         except Exception as e:

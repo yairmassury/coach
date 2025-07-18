@@ -2,13 +2,13 @@
 Main FastAPI application for AI Poker Coach.
 """
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import uvicorn
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Import routers
 from .api.games import router as games_router
@@ -16,7 +16,7 @@ from .api.ai_coach import router as ai_coach_router
 from .api.local_data import router as local_data_router
 
 # Import database
-from .config.database import create_tables, get_db
+from .config.database import create_tables
 
 # Import settings
 from .config.settings import get_settings
@@ -83,7 +83,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "ai-poker-coach",
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
         "version": "1.0.0"
     }
 
@@ -114,7 +114,7 @@ async def global_exception_handler(request, exc):
         content={
             "error": "Internal server error",
             "message": str(exc),
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
 
@@ -127,7 +127,7 @@ async def http_exception_handler(request, exc):
         content={
             "error": exc.detail,
             "status_code": exc.status_code,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
     )
 
