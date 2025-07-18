@@ -1,316 +1,431 @@
-# Coach - Poker Coaching Application
+# AI Poker Coach
 
-A comprehensive poker coaching application that tracks player progress, analyzes strengths and weaknesses, and provides AI-powered personalized coaching recommendations.
-
-## 🎯 Project Overview
-
-Coach is designed to help poker players improve their game through:
-- **Game Session Tracking**: Record and analyze poker sessions
-- **AI-Powered Analysis**: Get intelligent insights on your play style
-- **Progress Monitoring**: Track improvement over time
-- **Personalized Coaching**: Receive tailored recommendations
-- **Performance Metrics**: Detailed statistics and analytics
+An AI-powered MTT (Multi-Table Tournament) poker coaching application that generates realistic scenarios, evaluates decisions, and provides personalized feedback to help players improve their game.
 
 ## 🚀 Features
 
-### Core Features
-- **User Management**: Registration, authentication, and profile management
-- **Session Tracking**: Log poker sessions with buy-ins, cash-outs, and duration
-- **Hand History Analysis**: Upload and analyze played hands
-- **Performance Metrics**: Win/loss rates, ROI, hourly rates
-- **AI Coaching**: Personalized recommendations based on play style
+- **AI-Generated Scenarios**: Dynamic MTT scenarios tailored to player weaknesses
+- **Decision Evaluation**: Comprehensive analysis of poker decisions with EV calculations
+- **Personalized Coaching**: Adaptive learning system that tracks player progress
+- **Weakness Detection**: Identifies specific leaks and patterns in play
+- **Progress Tracking**: Detailed analytics and improvement metrics
+- **Tournament Focus**: Specialized for MTT play with ICM considerations
 
-### Advanced Features
-- **Weakness Detection**: Identify common mistakes and leaks
-- **Strength Analysis**: Highlight areas of strong play
-- **Progress Tracking**: Visual charts showing improvement over time
-- **Bankroll Management**: Track and analyze bankroll changes
-- **Position Analysis**: Analyze play by table position
-- **Opponent Analysis**: Track tendencies of regular opponents
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   AI POKER COACH                    │
+├─────────────────────────────────────────────────────┤
+│                                                     │
+│  Backend (FastAPI + Python)                        │
+│  • AI Coach Service (OpenAI GPT-4)                 │
+│  • Scenario Generator                               │
+│  • Decision Evaluator                               │
+│  • Player Context Management                       │
+│  • SQLite Database (Local)                          │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+                           ↓
+                    REST API (JSON)
+                           ↓
+┌─────────────────────────────────────────────────────┐
+│                  FRONTEND (React)                   │
+│  • Scenario Display                                 │
+│  • Decision Input                                   │
+│  • AI Feedback                                      │
+│  • Progress Dashboard                               │
+│  • Analytics & Reports                              │
+└─────────────────────────────────────────────────────┘
+```
 
 ## 🛠️ Technology Stack
 
 ### Backend
 - **Python 3.9+** with FastAPI
-- **PostgreSQL** database with SQLAlchemy ORM
-- **OpenAI GPT-4** for AI analysis
-- **JWT** for authentication
-- **Docker** for containerization
+- **OpenAI GPT-4** for AI coaching
+- **SQLite** for local data persistence
+- **Redis** for caching (optional)
+- **SQLAlchemy** for ORM
+- **Pydantic** for data validation
 
 ### Frontend
 - **React 18** with TypeScript
-- **Modern UI framework** (to be determined)
-- **Responsive design** for mobile and desktop
+- **React Query** for server state management
+- **React Router** for navigation
+- **Tailwind CSS** for styling
+- **Shadcn/ui** for UI components
 
-### Development Tools
-- **pytest** for backend testing
-- **Jest** for frontend testing
-- **Docker Compose** for local development
-- **GitHub Actions** for CI/CD
+### Mobile (Future)
+- **React Native** with TypeScript
+- **Async Storage** for local data
+- **React Navigation** for navigation
 
-## 📋 Prerequisites
-
-- Python 3.9 or higher
-- Node.js 16 or higher
-- PostgreSQL 12 or higher
-- Docker and Docker Compose
-- OpenAI API key
-
-## 🏗️ Project Structure
+## 📁 Project Structure
 
 ```
 coach/
-├── backend/                 # Python FastAPI backend
-│   ├── api/                # API endpoints
-│   ├── models/             # Database models
-│   ├── services/           # Business logic
-│   ├── config/             # Configuration
-│   └── tests/              # Backend tests
-├── frontend/               # React TypeScript frontend
+├── backend/
+│   ├── main.py                    # FastAPI application
+│   ├── api/
+│   │   ├── games.py              # Game endpoints
+│   │   ├── ai_coach.py           # AI coach endpoints
+│   │   └── local_data.py         # Local data management
+│   ├── models/
+│   │   ├── scenario.py           # Scenario data models
+│   │   ├── evaluation.py         # Evaluation models
+│   │   └── player_context.py     # Player tracking
+│   ├── services/
+│   │   ├── ai_coach_service.py   # Core AI logic
+│   │   ├── coaching_service.py   # High-level coaching
+│   │   └── local_data_service.py # Local data management
+│   ├── prompts/
+│   │   ├── scenario_prompts.py   # AI scenario prompts
+│   │   └── evaluation_prompts.py # AI evaluation prompts
+│   ├── schemas/
+│   │   ├── game.py               # Request/response schemas
+│   │   └── analysis.py           # Analysis schemas
+│   └── config/
+│       ├── settings.py           # Configuration
+│       └── database.py           # Database setup
+├── frontend/
 │   ├── src/
-│   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── services/       # API services
-│   │   └── hooks/          # Custom hooks
-│   └── public/             # Static assets
-├── docs/                   # Documentation
-├── scripts/                # Utility scripts
-└── docker-compose.yml      # Docker configuration
+│   │   ├── components/
+│   │   │   ├── game/             # Game components
+│   │   │   │   └── ScenarioDisplay.tsx
+│   │   │   └── ai-coach/         # AI coach components
+│   │   │       ├── EvaluationFeedback.tsx
+│   │   │       └── ProgressDashboard.tsx
+│   │   ├── pages/
+│   │   │   ├── Dashboard.tsx     # Main dashboard
+│   │   │   └── ScenarioTraining.tsx
+│   │   ├── hooks/
+│   │   │   └── useAICoach.ts     # AI coach hook
+│   │   ├── services/
+│   │   │   └── aiCoachAPI.ts     # API service
+│   │   ├── types/
+│   │   │   └── game.ts           # TypeScript types
+│   │   └── config/
+│   │       └── constants.ts      # Configuration
+├── venv/                         # Python virtual environment
+├── mobile/                       # React Native app (future)
+├── .env                          # Environment variables
+├── setup.py                      # Database initialization
+├── requirements.txt              # Python dependencies
+└── README.md                     # This file
 ```
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-### 1. Clone the Repository
+### Prerequisites
+
+- **Node.js** 16+ and npm
+- **Python** 3.9+ and pip
+- **OpenAI API Key**
+- **Redis** (optional, for caching)
+
+### Backend Setup
+
+1. **Environment Setup**
+   ```bash
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+2. **Environment Variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+3. **Database Setup**
+   ```bash
+   # Initialize local SQLite database (creates ~/.coach directory)
+   python setup.py
+   ```
+
+4. **Start Backend**
+   ```bash
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+### Frontend Setup
+
+1. **Install Dependencies**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+2. **Environment Variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+3. **Start Frontend**
+   ```bash
+   npm start
+   ```
+
+### Alternative Setup (Using npm scripts)
+
 ```bash
-git clone https://github.com/yairmassury/coach.git
-cd coach
+# Complete setup (creates venv and installs packages)
+npm run setup
+
+# Initialize database
+npm run db:init
+
+# Start development server
+npm run dev
 ```
 
-### 2. Environment Setup
-```bash
-# Copy environment template
-cp .env.example .env
+## 🎯 API Endpoints
 
-# Edit .env with your configuration
-# Add your OpenAI API key and database credentials
+### AI Coach Endpoints
+
+- `POST /api/ai/scenario` - Generate new scenario
+- `POST /api/ai/evaluate` - Evaluate player decision
+- `GET /api/ai/progress/{player_id}` - Get progress report
+- `GET /api/ai/coaching-plan/{player_id}` - Get coaching plan
+- `POST /api/ai/coaching-session/start` - Start session
+- `GET /api/ai/weakness-analysis/{player_id}` - Get weakness analysis
+
+### Game Endpoints
+
+- `POST /api/games/scenario/generate` - Generate scenario
+- `POST /api/games/scenario/evaluate` - Evaluate decision
+- `GET /api/games/player/{player_id}/stats` - Get player stats
+- `POST /api/games/session/start` - Start session
+
+## 🔧 Configuration
+
+### Environment Variables
+
+```bash
+# Backend (.env)
+OPENAI_API_KEY=your-openai-api-key-here
+DATABASE_URL=sqlite:///~/.coach/player_data.db
+REDIS_URL=redis://localhost:6379/0
+SECRET_KEY=your-secret-key-here
+
+# Frontend (.env)
+REACT_APP_API_URL=http://localhost:8000/api
 ```
 
-### 3. Docker Development (Recommended)
-```bash
-# Start all services
-docker-compose up -d
+### Key Settings
 
-# The application will be available at:
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:8000
-# API Documentation: http://localhost:8000/docs
+- **OpenAI Model**: GPT-4 (configurable)
+- **Temperature**: 0.7 (balance creativity/consistency)
+- **Max Tokens**: 2000 (scenario/evaluation length)
+- **Database**: SQLite local file storage
+- **Caching**: Redis for scenario caching (optional)
+
+## 📊 Key Features
+
+### AI Scenario Generation
+
+- **Dynamic Content**: Every scenario is unique
+- **Weakness Targeting**: Scenarios focus on player leaks
+- **Tournament Context**: ICM pressure, stack depths, stages
+- **Realistic Situations**: Based on actual MTT dynamics
+
+### Decision Evaluation
+
+- **EV Calculations**: Expected value analysis
+- **Leak Detection**: Pattern recognition in mistakes
+- **Coaching Feedback**: Personalized improvement tips
+- **Concept Reinforcement**: Key poker concepts highlighted
+
+### Progress Tracking
+
+- **Accuracy Trends**: Track improvement over time
+- **Weakness Profiles**: Detailed leak analysis
+- **Skill Assessment**: Overall skill level evaluation
+- **Adaptive Learning**: Difficulty adjusts to performance
+
+## 🎮 Usage
+
+### Starting a Session
+
+1. **Dashboard** - View progress and start training
+2. **Scenario Training** - Practice with AI-generated scenarios
+3. **Decision Making** - Choose actions (fold, call, raise)
+4. **AI Feedback** - Receive detailed analysis
+5. **Progress Tracking** - Monitor improvement
+
+### Scenario Types
+
+- **Preflop** - Opening ranges, 3-betting, blind defense
+- **Postflop** - Bet sizing, bluffing, value betting
+- **Tournament** - ICM spots, bubble play, final table
+- **Specific Situations** - All-in decisions, river spots
+
+## 🧠 AI Features
+
+### Weakness Detection
+
+The AI identifies patterns in player mistakes:
+
+- **Preflop Leaks**: Range issues, position awareness
+- **Postflop Leaks**: Bet sizing, bluff frequency
+- **Tournament Leaks**: ICM ignorance, risk assessment
+- **Mental Game**: Tilt indicators, consistency issues
+
+### Adaptive Difficulty
+
+- **Performance Tracking**: Monitors accuracy rates
+- **Dynamic Adjustment**: Increases/decreases difficulty
+- **Skill-Based Scenarios**: Matches player level
+- **Challenge Progression**: Gradual skill building
+
+## 📈 Analytics
+
+### Player Metrics
+
+- **Overall Accuracy**: Decision correctness rate
+- **Improvement Rate**: Skill development velocity
+- **Concept Mastery**: Understanding of key concepts
+- **Weakness Severity**: Leak impact assessment
+
+### Progress Reports
+
+- **Session Summaries**: Performance per session
+- **Trend Analysis**: Long-term improvement patterns
+- **Benchmarking**: Comparison to skill level norms
+- **Coaching Recommendations**: Personalized study plan
+
+## 💾 Local Data Management
+
+### Data Storage
+
+All player data is stored locally in your home directory:
+
+```
+~/.coach/
+├── player_data.db          # SQLite database (all game data)
+├── backups/                # Automatic database backups
+│   ├── backup_20240115.db
+│   └── backup_20240116.db
+├── exports/                # Player data exports (JSON)
+│   └── player_export.json
+└── logs/                   # Session logs
+    └── sessions.log
 ```
 
-### 4. Manual Development Setup
+### Data Management Features
 
-#### Backend Setup
+- **Automatic Backups**: Daily database backups
+- **Export/Import**: JSON export of all player data
+- **Privacy**: All data stays on your local machine
+- **Portability**: Easy to backup and transfer
+- **No Server Required**: No database server setup needed
+
+### API Endpoints for Data Management
+
+- `GET /api/local/info` - Get local data storage info
+- `POST /api/local/backup` - Create database backup
+- `GET /api/local/backups` - List available backups
+- `POST /api/local/export/{player_id}` - Export player data
+- `GET /api/local/stats` - Get database statistics
+
+## 🔮 Future Enhancements
+
+### Phase 2: Advanced Features
+- **Hand Range Visualization**: GTO range displays
+- **Session Review**: AI analysis of full sessions
+- **Opponent Modeling**: Adjust to different player types
+- **Multi-way Scenarios**: Complex multi-player situations
+
+### Phase 3: Mobile App
+- **React Native App**: Native mobile experience
+- **Offline Capability**: Practice without internet
+- **Push Notifications**: Study reminders
+- **Touch Interface**: Mobile-optimized UI
+
+### Phase 4: PLO Support
+- **PLO Scenarios**: Pot Limit Omaha training
+- **4-Card Analysis**: PLO-specific evaluation
+- **PLO Leaks**: Different leak categories
+- **Range Complexity**: PLO range visualization
+
+## 🤝 Contributing
+
+1. **Fork the Repository**
+2. **Create Feature Branch**: `git checkout -b feature/amazing-feature`
+3. **Commit Changes**: `git commit -m 'Add amazing feature'`
+4. **Push to Branch**: `git push origin feature/amazing-feature`
+5. **Open Pull Request**
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🛠️ Development
+
+### Running Tests
+
 ```bash
-# Navigate to backend directory
+# Backend tests
 cd backend
+pytest tests/ -v
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run database migrations
-python scripts/init_db.py
-
-# Start the backend server
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-#### Frontend Setup
-```bash
-# Navigate to frontend directory
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start the development server
-npm start
-```
-
-## 📊 Database Setup
-
-### Using Docker (Recommended)
-Database is automatically set up with Docker Compose.
-
-### Manual Setup
-```bash
-# Create PostgreSQL database
-createdb coach_db
-
-# Run initialization script
-python scripts/init_db.py
-
-# (Optional) Seed with sample data
-python scripts/seed_data.py
-```
-
-## 🧪 Testing
-
-### Backend Tests
-```bash
-cd backend
-pytest tests/ -v --cov=.
-```
-
-### Frontend Tests
-```bash
+# Frontend tests
 cd frontend
 npm test
 ```
 
-## 📖 API Documentation
+### Code Quality
 
-Once the backend is running, visit:
-- **Interactive API docs**: http://localhost:8000/docs
-- **ReDoc documentation**: http://localhost:8000/redoc
-
-## 🏛️ Architecture
-
-### Backend Architecture
-- **FastAPI**: Modern, fast web framework for building APIs
-- **SQLAlchemy**: Database ORM for Python
-- **Pydantic**: Data validation using Python type annotations
-- **JWT**: JSON Web Tokens for authentication
-
-### Frontend Architecture
-- **React**: Component-based UI library
-- **TypeScript**: Type-safe JavaScript
-- **Custom Hooks**: Reusable logic components
-- **Context API**: State management
-
-### Database Schema
-- **Users**: User accounts and profiles
-- **GameSessions**: Poker session records
-- **HandHistory**: Individual hand data
-- **AnalysisResults**: AI analysis results
-
-## 🔐 Security
-
-- **Authentication**: JWT-based authentication
-- **Authorization**: Role-based access control
-- **Data Protection**: Encryption at rest and in transit
-- **Input Validation**: Comprehensive input sanitization
-- **Rate Limiting**: API rate limiting for protection
-
-## 🚀 Deployment
-
-### Development
 ```bash
-docker-compose up -d
+# Backend linting
+cd backend
+flake8 .
+black .
+
+# Frontend linting
+cd frontend
+npm run lint
+npm run format
 ```
 
-### Production
-Detailed deployment instructions available in `docs/deployment.md`.
+### Database Initialization
 
-## 🤝 Contributing
+```bash
+# Initialize local SQLite database
+python setup.py
+```
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/new-feature`)
-3. Commit your changes (`git commit -am 'Add new feature'`)
-4. Push to the branch (`git push origin feature/new-feature`)
-5. Create a Pull Request
-
-## 📝 Development Workflow
-
-1. **Planning**: Check `PROJECT_PLAN.md` for development phases
-2. **Issues**: Use GitHub Issues for tracking tasks
-3. **Branches**: Create feature branches for new development
-4. **Testing**: Ensure tests pass before submitting PRs
-5. **Code Review**: All changes require code review
-
-## 🐛 Troubleshooting
+## ❓ Troubleshooting
 
 ### Common Issues
 
-1. **Database Connection Issues**
-   - Check PostgreSQL is running
-   - Verify database credentials in `.env`
-   - Ensure database exists
+1. **OpenAI API Key**: Ensure key is set in environment variables
+2. **Database Initialization**: Run `python setup.py` to initialize local database
+3. **Port Conflicts**: Make sure ports 8000 and 3000 are free
+4. **Dependencies**: Run `pip install -r requirements.txt` and `npm install`
+5. **Permissions**: Ensure write access to home directory (~/.coach/)
 
-2. **API Key Issues**
-   - Verify OpenAI API key is set in `.env`
-   - Check API key permissions and rate limits
+### Performance Optimization
 
-3. **Docker Issues**
-   - Ensure Docker is running
-   - Check port availability (3000, 8000, 5432)
-   - Run `docker-compose down` and `docker-compose up -d`
+- Use Redis for caching scenarios (optional)
+- Local SQLite database provides fast performance
+- Implement request queuing for AI calls
+- Regular database cleanup and maintenance
 
-### Getting Help
-- Check the [documentation](docs/)
-- Review [GitHub Issues](https://github.com/yairmassury/coach/issues)
-- Create a new issue if needed
+## 📞 Support
 
-## 📚 Documentation
-
-- **Project Plan**: `PROJECT_PLAN.md` - Detailed development plan
-- **API Documentation**: `docs/api.md` - API endpoints and usage
-- **Setup Guide**: `docs/setup.md` - Detailed setup instructions
-- **Architecture**: `docs/architecture.md` - Technical architecture
-
-## 🛣️ Roadmap
-
-### Phase 1 - Foundation (Weeks 1-2)
-- ✅ Project setup and structure
-- ✅ Development environment
-- Basic API and database setup
-- Authentication system
-
-### Phase 2 - Core Features (Weeks 3-5)
-- Game session tracking
-- Hand history storage
-- Basic analysis features
-- User dashboard
-
-### Phase 3 - AI Integration (Weeks 6-8)
-- OpenAI integration
-- Hand analysis algorithms
-- Coaching recommendations
-- Performance metrics
-
-### Phase 4 - Frontend (Weeks 9-11)
-- React application
-- User interface
-- Data visualization
-- Mobile responsiveness
-
-### Phase 5 - Advanced Features (Weeks 12-14)
-- Advanced analytics
-- Progress tracking
-- Social features
-- Export capabilities
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👥 Team
-
-- **Yair Massury** - Project Creator and Lead Developer
-
-## 🙏 Acknowledgments
-
-- OpenAI for GPT-4 API
-- FastAPI and React communities
-- PostgreSQL team
-- All contributors and testers
+For support, please:
+1. Check the [troubleshooting guide](#-troubleshooting)
+2. Search existing [issues](https://github.com/yairmassury/coach/issues)
+3. Create a new issue with detailed description
 
 ---
 
-**Status**: 🚧 In Development  
-**Version**: 0.1.0  
-**Last Updated**: July 2025
-
-For detailed development information, see [PROJECT_PLAN.md](PROJECT_PLAN.md).
+**Status**: 🚀 Ready for Development
+**Focus**: MTT No-Limit Hold'em
+**Platform**: Web (React) + API (FastAPI)
+**AI Provider**: OpenAI GPT-4

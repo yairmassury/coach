@@ -3,10 +3,8 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
-# Database
+# Database - SQLite (built into Python)
 sqlalchemy==2.0.23
-psycopg2-binary==2.9.9
-alembic==1.13.1
 
 # Authentication
 python-jose[cryptography]==3.3.0
@@ -28,7 +26,7 @@ requests==2.31.0
 
 # Data Processing
 pandas==2.1.4
-numpy==1.24.4
+numpy>=1.24.4
 
 # Testing
 pytest==7.4.3
@@ -64,3 +62,9 @@ python-dateutil==2.8.2
 # Utils
 click==8.1.7
 rich==13.7.0
+
+# Additional dependencies for AI Poker Coach
+aiofiles==23.2.1
+Pillow==10.1.0
+pydantic-extra-types==2.2.0
+tenacity==8.2.3
