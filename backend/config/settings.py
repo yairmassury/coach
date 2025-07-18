@@ -20,15 +20,42 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = Field(default="redis://localhost:6379/0")
     
+    # AI Provider Configuration
     # OpenAI
     OPENAI_API_KEY: Optional[str] = Field(default=None)
     OPENAI_MODEL: str = Field(default="gpt-4")
-    OPENAI_TEMPERATURE: float = Field(default=0.7)
-    OPENAI_MAX_TOKENS: int = Field(default=2000)
+    OPENAI_BASE_URL: Optional[str] = Field(default=None)
     
-    # Alternative AI providers
-    CLAUDE_API_KEY: Optional[str] = Field(default=None)
-    PERPLEXITY_API_KEY: Optional[str] = Field(default=None)
+    # Anthropic Claude
+    ANTHROPIC_API_KEY: Optional[str] = Field(default=None)
+    ANTHROPIC_MODEL: str = Field(default="claude-3-5-sonnet-20241022")
+    ANTHROPIC_BASE_URL: Optional[str] = Field(default=None)
+    
+    # Google Gemini
+    GOOGLE_API_KEY: Optional[str] = Field(default=None)
+    GOOGLE_MODEL: str = Field(default="gemini-1.5-pro")
+    GOOGLE_BASE_URL: Optional[str] = Field(default=None)
+    
+    # OpenRouter
+    OPENROUTER_API_KEY: Optional[str] = Field(default=None)
+    OPENROUTER_MODEL: str = Field(default="anthropic/claude-3.5-sonnet")
+    OPENROUTER_BASE_URL: Optional[str] = Field(default=None)
+    
+    # XAI Grok
+    XAI_API_KEY: Optional[str] = Field(default=None)
+    XAI_MODEL: str = Field(default="grok-beta")
+    XAI_BASE_URL: Optional[str] = Field(default=None)
+    
+    # Ollama (local)
+    OLLAMA_API_KEY: Optional[str] = Field(default="none")
+    OLLAMA_MODEL: str = Field(default="llama3.1:8b")
+    OLLAMA_BASE_URL: Optional[str] = Field(default=None)
+    
+    # AI Settings (applied to all providers)
+    AI_TEMPERATURE: float = Field(default=0.7)
+    AI_MAX_TOKENS: int = Field(default=2000)
+    AI_PROVIDER_TIMEOUT: int = Field(default=30)
+    AI_PROVIDER_PRIORITY: str = Field(default="anthropic,openai,google,openrouter,xai,ollama")
     
     # Security
     SECRET_KEY: str = Field(default="your-secret-key-change-this-in-production")

@@ -4,17 +4,18 @@ Local data management service for SQLite database and file operations.
 
 import json
 import shutil
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-import sqlite3
-from sqlalchemy.orm import Session
-from sqlalchemy import text
 
-from ..config.database import get_local_data_dir, get_db, engine
+from sqlalchemy.orm import Session
+
+from ..config.database import get_local_data_dir, engine
+from ..models.evaluation import Evaluation
 from ..models.player_context import PlayerContext
 from ..models.scenario import Scenario
-from ..models.evaluation import Evaluation
+
 
 class LocalDataService:
     """Service for managing local data storage and backups."""

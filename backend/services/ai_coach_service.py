@@ -4,10 +4,10 @@ AI Coach Service - Core AI integration for poker coaching.
 
 import json
 import uuid
+import logging
 
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
-from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
 
 from ..models.scenario import Scenario, ScenarioRequest, ScenarioResponse
@@ -25,18 +25,28 @@ from ..prompts.evaluation_prompts import (
     build_coaching_plan_prompt
 )
 from ..config.settings import get_settings
+from .ai_providers.manager import ai_provider_manager
+from .ai_providers.base import AIProviderError
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 class AICoachService:
-    """Core AI service for poker coaching."""
+    """Core AI service for poker coaching with multi-provider support."""
     
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = settings.OPENAI_MODEL or "gpt-4o"
-        self.temperature = 0.7
-        self.max_tokens = 2000
+        self.provider_manager = ai_provider_manager
+        self.temperature = settings.AI_TEMPERATURE
+        self.max_tokens = settings.AI_MAX_TOKENS
         self.player_contexts = {}  # In-memory cache for player contexts
+        self._initialized = False
+    
+    async def _ensure_initialized(self):
+        """Ensure the AI provider manager is initialized."""
+        if not self._initialized:
+            self.provider_manager.configure_from_env(settings)
+            await self.provider_manager.initialize()
+            self._initialized = True
     
     async def generate_scenario(
         self,
@@ -46,32 +56,37 @@ class AICoachService:
         """Generate a new MTT scenario using AI."""
         
         try:
+            await self._ensure_initialized()
+            
             # Get player context for personalization
             player_context = await self._get_player_context(request.player_id, db)
             
             # Build the prompt based on request parameters
             prompt = self._build_scenario_prompt(request, player_context)
             
-            # Generate scenario using OpenAI
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": COACHING_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
+            # Generate scenario using AI provider manager
+            ai_response = await self.provider_manager.generate_text(
+                prompt=prompt,
+                system_prompt=COACHING_SYSTEM_PROMPT,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
             )
             
+            logger.info(f"Generated scenario using {ai_response.provider} provider")
+            
             # Parse the response
-            scenario_data = self._parse_scenario_response(response.choices[0].message.content)
+            scenario_data = self._parse_scenario_response(ai_response.content)
             
             # Save to database
             scenario = await self._save_scenario(scenario_data, db)
             
             return ScenarioResponse(**scenario_data)
             
+        except AIProviderError as e:
+            logger.error(f"AI provider error in scenario generation: {e}")
+            raise Exception(f"Error getting next scenario: {str(e)}")
         except Exception as e:
+            logger.error(f"Unexpected error in scenario generation: {e}")
             raise Exception(f"Error generating scenario: {str(e)}")
     
     async def evaluate_decision(
@@ -82,6 +97,8 @@ class AICoachService:
         """Evaluate a player's decision using AI."""
         
         try:
+            await self._ensure_initialized()
+            
             # Get scenario and player context
             scenario = db.query(Scenario).filter(Scenario.scenario_id == request.scenario_id).first()
             
@@ -99,19 +116,18 @@ class AICoachService:
                 request.time_taken
             )
             
-            # Generate evaluation using OpenAI
-            response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": COACHING_SYSTEM_PROMPT},
-                    {"role": "user", "content": prompt}
-                ],
+            # Generate evaluation using AI provider manager
+            ai_response = await self.provider_manager.generate_text(
+                prompt=prompt,
+                system_prompt=COACHING_SYSTEM_PROMPT,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
             )
             
+            logger.info(f"Generated evaluation using {ai_response.provider} provider")
+            
             # Parse the response
-            evaluation_data = self._parse_evaluation_response(response.choices[0].message.content)
+            evaluation_data = self._parse_evaluation_response(ai_response.content)
             
             # Save to database
             evaluation = await self._save_evaluation(evaluation_data, request, db)
@@ -121,7 +137,11 @@ class AICoachService:
             
             return EvaluationResponse(**evaluation_data)
             
+        except AIProviderError as e:
+            logger.error(f"AI provider error in decision evaluation: {e}")
+            raise Exception(f"Error evaluating decision: {str(e)}")
         except Exception as e:
+            logger.error(f"Unexpected error in decision evaluation: {e}")
             raise Exception(f"Error evaluating decision: {str(e)}")
     
     async def generate_coaching_plan(

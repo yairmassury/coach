@@ -1,35 +1,5 @@
 export interface Scenario {
   id: string;
-  tournament_stage: string;
-  hero_position: string;
-  hero_cards: string[];
-  hero_stack: number;
-  villain_positions: VillainPosition[];
-  blinds: {
-    small: number;
-    big: number;
-  };
-  ante: number;
-  players_remaining: number;
-  total_players: number;
-  prize_pool: number;
-  current_payouts?: { [key: string]: number };
-  action_history: string[];
-  current_street: string;
-  board: string[];
-  pot_size: number;
-  to_call: number;
-  min_raise: number;
-  max_raise: number;
-  valid_actions: string[];
-  scenario_description: string;
-  key_concepts: string[];
-  optimal_action: OptimalAction;
-  alternative_actions: AlternativeAction[];
-  difficulty_factors: string[];
-  learning_objectives: string[];
-  difficulty_level: string;
-  created_at: string;
 }
 
 export interface VillainPosition {
@@ -61,34 +31,12 @@ export interface AlternativeAction {
 }
 
 export interface Evaluation {
-  evaluation_id: string;
-  scenario_id: string;
-  player_action: string;
+  id: string;
   correct: boolean;
-  optimal_action: string;
-  optimal_amount?: number;
-  ev_difference: number;
-  leak_identified?: string;
-  explanation: string;
-  coaching_tip: string;
-  improvement_areas: string[];
-  severity: number;
-  created_at: string;
 }
 
 export interface ProgressReport {
   overall_skill: number;
-  improvement_rate: number;
-  biggest_leaks: Array<{
-    type: string;
-    severity: number;
-  }>;
-  recommended_focus: string[];
-  stats: {
-    total_hands: number;
-    win_rate: number;
-    accuracy_trend: number[];
-  };
 }
 
 export interface PlayerContext {

@@ -13,6 +13,7 @@ from ..models.evaluation import EvaluationRequest
 from ..models.scenario import ScenarioRequest, TournamentStage
 from ..services.ai_coach_service import ai_coach_service
 from ..services.coaching_service import coaching_service
+from ..services.ai_providers.manager import ai_provider_manager
 
 router = APIRouter(prefix="/ai", tags=["ai-coach"])
 
@@ -329,6 +330,73 @@ async def get_global_stats(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# AI Provider Management Endpoints
+@router.get("/providers/status")
+async def get_ai_providers_status():
+    """Get status of all AI providers."""
+    
+    try:
+        from ..config.settings import get_settings
+        settings = get_settings()
+        
+        # Configure and get provider status
+        ai_provider_manager.configure_from_env(settings)
+        await ai_provider_manager.initialize()
+        
+        status = await ai_provider_manager.get_provider_status()
+        available_providers = await ai_provider_manager.get_available_providers()
+        preferred_provider = await ai_provider_manager.get_preferred_provider()
+        
+        return {
+            "available_providers": available_providers,
+            "preferred_provider": preferred_provider,
+            "provider_status": status,
+            "total_providers": len(status),
+            "healthy_providers": len([p for p in status.values() if p.healthy])
+        }
+        
+    except Exception as e:
+        return {
+            "error": str(e),
+            "available_providers": [],
+            "preferred_provider": None,
+            "provider_status": {},
+            "total_providers": 0,
+            "healthy_providers": 0
+        }
+
+@router.get("/providers/test/{provider_name}")
+async def test_ai_provider(provider_name: str):
+    """Test a specific AI provider."""
+    
+    try:
+        from ..config.settings import get_settings
+        settings = get_settings()
+        
+        ai_provider_manager.configure_from_env(settings)
+        await ai_provider_manager.initialize()
+        
+        response = await ai_provider_manager.generate_text(
+            prompt="Hello, this is a test. Please respond with 'Hello from [provider name]'",
+            preferred_provider=provider_name,
+            max_tokens=50
+        )
+        
+        return {
+            "status": "success",
+            "provider": response.provider,
+            "model": response.model,
+            "response": response.content,
+            "usage": response.usage
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "provider": provider_name,
+            "error": str(e)
+        }
 
 # Health check endpoint
 @router.get("/health")
